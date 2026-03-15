@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>PRS SOR Pricing Agent</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0f0f13;--card:#1a1a24;--border:#2a2a3a;--blue:#3b82f6;--green:#22c55e;--yellow:#f59e0b;--red:#ef4444;--dim:#888;--text:#e5e5e5}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{background:var(--card);padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-shrink:0}
+.header h1{font-size:16px;font-weight:700;color:#fff}
+.header .logo{width:36px;height:36px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.header .sub{font-size:11px;color:var(--dim)}
+.tabs{display:flex;gap:0;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
+.tab{flex:1;padding:10px;text-align:center;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.panel{flex:1;overflow:hidden;display:none;flex-direction:column}
+.panel.active{display:flex}
+.messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:85%;padding:10px 14px;border-radius:16px;font-size:14px;line-height:1.5;word-break:break-word}
+.msg.user{align-self:flex-end;background:var(--blue);color:#fff;border-bottom-right-radius:4px}
+.msg.bot{align-self:flex-start;background:var(--card);border:1px solid var(--border);border-bottom-left-radius:4px}
+.msg.bot pre{background:rgba(0,0,0,.3);padding:8px;border-radius:8px;overflow-x:auto;font-size:12px;margin:8px 0}
+.msg.bot code{font-size:12px}
+.msg.typing{color:var(--dim);font-style:italic}
+.msg .sor-code{display:inline-block;background:rgba(59,130,246,.15);color:var(--blue);padding:2px 8px;border-radius:6px;font-weight:700;font-size:13px;cursor:pointer}
+.msg .sor-price{color:var(--green);font-weight:700}
+.input-area{padding:12px;background:var(--card);border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+.input-area textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:10px 14px;color:var(--text);font-size:14px;resize:none;height:44px;max-height:120px;font-family:inherit;outline:none;transition:border-color .2s}
+.input-area textarea:focus{border-color:var(--blue)}
+.input-area button{width:44px;height:44px;border-radius:12px;border:none;background:var(--blue);color:#fff;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.input-area button:disabled{opacity:.4;cursor:not-allowed}
+/* Search panel */
+.search-box{padding:12px;background:var(--card);border-bottom:1px solid var(--border)}
+.search-box input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:14px;outline:none}
+.search-results{flex:1;overflow-y:auto;padding:12px}
+.sor-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;cursor:pointer;transition:border-color .2s}
+.sor-item:hover{border-color:var(--blue)}
+.sor-item .code{font-weight:700;color:var(--blue);font-size:15px}
+.sor-item .desc{font-size:13px;margin:4px 0;color:var(--text)}
+.sor-item .meta{font-size:11px;color:var(--dim);display:flex;gap:12px}
+.sor-item .price{color:var(--green);font-weight:700;font-size:15px}
+/* Quote panel */
+.quote-list{flex:1;overflow-y:auto;padding:12px}
+.quote-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.quote-item .info{flex:1}
+.quote-item .info .code{font-weight:700;color:var(--blue);font-size:13px}
+.quote-item .info .desc{font-size:12px;color:var(--dim)}
+.quote-item .price{text-align:right;min-width:80px}
+.quote-item .price .amount{font-weight:700;color:var(--green);font-size:15px}
+.quote-item .price .detail{font-size:11px;color:var(--dim)}
+.quote-item .del{color:var(--red);cursor:pointer;padding:4px 8px;font-size:16px}
+.quote-total{background:var(--card);border-top:1px solid var(--border);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.quote-total .label{font-weight:700;font-size:16px}
+.quote-total .amount{font-weight:700;font-size:22px;color:var(--green)}
+.quote-actions{display:flex;gap:8px;padding:8px 12px;background:var(--card);flex-shrink:0}
+.quote-actions button{flex:1;padding:10px;border-radius:10px;border:none;font-size:13px;font-weight:600;cursor:pointer}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-red{background:rgba(239,68,68,.15);color:var(--red)}
+.btn-green{background:rgba(34,197,94,.15);color:var(--green)}
+.empty{text-align:center;padding:40px;color:var(--dim);font-size:14px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">🏗️</div>
+  <div>
+    <h1>PRS SOR Pricing Agent</h1>
+    <div class="sub">UK Social Housing • Subby Rates</div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('chat')">💬 Chat</div>
+  <div class="tab" onclick="showTab('search')">🔍 Search</div>
+  <div class="tab" onclick="showTab('quote')">📋 Quote <span id="quote-count"></span></div>
+</div>
+
+<!-- CHAT PANEL -->
+<div class="panel active" id="panel-chat">
+  <div class="messages" id="chat-messages">
+    <div class="msg bot">
+      👋 Salut! Sunt agentul PRS de prețuri SOR.<br><br>
+      Scrie-mi ce lucrări ai de făcut (în română sau engleză) și îți găsesc codurile SOR cu prețuri.<br><br>
+      Exemple:<br>
+      • "Repară tavan baie, skim și vopsire"<br>
+      • "Hack off plaster wall 12sqm, replaster"<br>
+      • "Investigate leak WC, renew sealant bath"
+    </div>
+  </div>
+  <div class="input-area">
+    <textarea id="chat-input" placeholder="Descrie lucrările..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"></textarea>
+    <button onclick="sendChat()" id="send-btn">➤</button>
+  </div>
+</div>
+
+<!-- SEARCH PANEL -->
+<div class="panel" id="panel-search">
+  <div class="search-box">
+    <input type="text" id="search-input" placeholder="Caută cod SOR sau cuvânt cheie..." oninput="doSearch(this.value)">
+  </div>
+  <div class="search-results" id="search-results">
+    <div class="empty">Scrie minim 2 caractere pentru a căuta</div>
+  </div>
+</div>
+
+<!-- QUOTE PANEL -->
+<div class="panel" id="panel-quote">
+  <div class="quote-list" id="quote-list">
+    <div class="empty">Cotația e goală.<br>Adaugă coduri din Chat sau Search.</div>
+  </div>
+  <div class="quote-total">
+    <div class="label">TOTAL:</div>
+    <div class="amount" id="quote-total">£0.00</div>
+  </div>
+  <div class="quote-actions">
+    <button class="btn-red" onclick="clearQuote()">🗑️ Clear</button>
+    <button class="btn-green" onclick="exportCSV()">📥 Export CSV</button>
+  </div>
+</div>
+
+<script>
+// State
+var quoteItems = [];
+var chatHistory = [];
+
+// Tabs
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t,i){ t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
+  document.getElementById('panel-'+name).classList.add('active');
+  var tabs = document.querySelectorAll('.tab');
+  var idx = name==='chat'?0:name==='search'?1:2;
+  tabs[idx].classList.add('active');
+}
+
+// Chat
+async function sendChat() {
+  var input = document.getElementById('chat-input');
+  var text = input.value.trim();
+  if (!text) return;
+  
+  input.value = '';
+  input.style.height = '44px';
+  
+  // Add user message
+  addMessage(text, 'user');
+  chatHistory.push({role:'user', content:text});
+  
+  // Show typing
+  var typing = addMessage('Analizez...', 'bot typing');
+  
+  document.getElementById('send-btn').disabled = true;
+  
+  try {
+    var res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({message: text, history: chatHistory.slice(-10)})
+    });
+    var data = await res.json();
+    typing.remove();
+    
+    if (data.error) {
+      addMessage('❌ Eroare: ' + data.error, 'bot');
+    } else {
+      addMessage(data.reply, 'bot');
+      chatHistory.push({role:'assistant', content: data.reply});
+    }
+  } catch(e) {
+    typing.remove();
+    addMessage('❌ Eroare conexiune: ' + e.message, 'bot');
+  }
+  
+  document.getElementById('send-btn').disabled = false;
+}
+
+function addMessage(text, cls) {
+  var div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  // Simple markdown-like formatting
+  var html = text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<strong>$1</strong>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+  // Highlight SOR codes (6 digit numbers)
+  html = html.replace(/\b(\d{6})\b/g, '<span class="sor-code" onclick="addToQuote($1)">$1</span>');
+  // Highlight prices
+  html = html.replace(/£(\d+\.\d{2})/g, '<span class="sor-price">£$1</span>');
+  div.innerHTML = html;
+  var container = document.getElementById('chat-messages');
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+// Search
+var searchTimer;
+function doSearch(q) {
+  clearTimeout(searchTimer);
+  if (q.length < 2) {
+    document.getElementById('search-results').innerHTML = '<div class="empty">Scrie minim 2 caractere</div>';
+    return;
+  }
+  searchTimer = setTimeout(async function() {
+    var res = await fetch('/api/search?q=' + encodeURIComponent(q));
+    var data = await res.json();
+    var html = '';
+    if (data.length === 0) {
+      html = '<div class="empty">Niciun rezultat</div>';
+    } else {
+      data.forEach(function(d) {
+        html += '<div class="sor-item" onclick="addToQuote(' + d.c + ')">' +
+          '<div style="display:flex;justify-content:space-between;align-items:start">' +
+          '<div><span class="code">' + d.c + '</span></div>' +
+          '<div class="price">£' + d.r.toFixed(2) + '</div></div>' +
+          '<div class="desc">' + d.s + '</div>' +
+          '<div class="meta"><span>' + d.e + '</span><span>' + d.u + '</span></div>' +
+          '</div>';
+      });
+    }
+    document.getElementById('search-results').innerHTML = html;
+  }, 300);
+}
+
+// Quote management
+function addToQuote(code) {
+  fetch('/api/code/' + code).then(function(r){return r.json();}).then(function(d) {
+    if (d.error) return;
+    var existing = quoteItems.find(function(i){return i.code===d.c;});
+    if (existing) {
+      existing.qty++;
+    } else {
+      quoteItems.push({code:d.c, desc:d.s, uom:d.u, rate:d.r, qty:1});
+    }
+    renderQuote();
+    // Show notification
+    var n = document.createElement('div');
+    n.style.cssText = 'position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:8px 16px;border-radius:8px;font-size:13px;z-index:999;font-weight:600';
+    n.textContent = '✅ ' + d.c + ' adăugat la cotație';
+    document.body.appendChild(n);
+    setTimeout(function(){n.remove();}, 2000);
+    updateQuoteCount();
+  });
+}
+
+function renderQuote() {
+  var container = document.getElementById('quote-list');
+  if (quoteItems.length === 0) {
+    container.innerHTML = '<div class="empty">Cotația e goală.<br>Adaugă coduri din Chat sau Search.</div>';
+    document.getElementById('quote-total').textContent = '£0.00';
+    updateQuoteCount();
+    return;
+  }
+  var total = 0;
+  var html = '';
+  quoteItems.forEach(function(item, i) {
+    var price = item.qty * item.rate;
+    total += price;
+    html += '<div class="quote-item">' +
+      '<div class="del" onclick="removeQuote(' + i + ')">×</div>' +
+      '<div class="info"><span class="code">' + item.code + '</span> ' +
+      '<span class="desc">' + item.desc + '</span></div>' +
+      '<div class="price"><div class="amount">£' + price.toFixed(2) + '</div>' +
+      '<div class="detail">' + item.qty + ' × £' + item.rate.toFixed(2) + ' ' + item.uom + '</div></div></div>';
+  });
+  container.innerHTML = html;
+  document.getElementById('quote-total').textContent = '£' + total.toFixed(2);
+  updateQuoteCount();
+}
+
+function removeQuote(i) {
+  quoteItems.splice(i, 1);
+  renderQuote();
+}
+
+function clearQuote() {
+  if (confirm('Ștergi toată cotația?')) {
+    quoteItems = [];
+    renderQuote();
+  }
+}
+
+function updateQuoteCount() {
+  var el = document.getElementById('quote-count');
+  el.textContent = quoteItems.length > 0 ? '(' + quoteItems.length + ')' : '';
+}
+
+function exportCSV() {
+  if (quoteItems.length === 0) return;
+  var csv = 'Code,Description,Qty,Unit,Unit Price,Total\n';
+  var total = 0;
+  quoteItems.forEach(function(item) {
+    var price = item.qty * item.rate;
+    total += price;
+    csv += item.code + ',"' + item.desc + '",' + item.qty + ',' + item.uom + ',' + item.rate.toFixed(2) + ',' + price.toFixed(2) + '\n';
+  });
+  csv += ',,,,TOTAL:,' + total.toFixed(2) + '\n';
+  
+  var blob = new Blob([csv], {type:'text/csv'});
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'PRS_Quotation_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+// Auto-resize textarea
+document.getElementById('chat-input').addEventListener('input', function() {
+  this.style.height = '44px';
+  this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+});
+</script>
+</body>
+</html>
